@@ -33,18 +33,15 @@ th{color:#5d6b73;font-size:.82rem}
 a{color:#0f6b62}
 """
 
-
 def load_results():
     if not RESULTS_FILE.exists():
         return []
     return json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
 
-
 def failure_reason(r):
     if r["status"] == "ERROR":
         return f"The test could not finish: {r['actual']}"
     return f"Expected {r['expected']} but the page showed: {r['actual']}"
-
 
 def time_chart(results):
     """Horizontal SVG bar chart of execution time, coloured by status."""
@@ -63,7 +60,6 @@ def time_chart(results):
                    f'{r["duration_s"]}s</text>')
     svg.append("</svg>")
     return "".join(svg)
-
 
 def build_html(results):
     total = len(results)
@@ -121,7 +117,6 @@ def build_html(results):
             f'<p>Runner: {escape(runner)} | Python {platform.python_version()} | {when}{run_info}</p></header>'
             f'<main>{body}</main></body></html>')
 
-
 def write_job_summary(results):
     """Shows a short table on the GitHub run page (no download needed)."""
     path = os.getenv("GITHUB_STEP_SUMMARY")
@@ -133,7 +128,6 @@ def write_job_summary(results):
     lines += [f"| {r['test_id']} | {r['status']} | {r['duration_s']}s |" for r in results]
     with open(path, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-
 
 if __name__ == "__main__":
     data = load_results()

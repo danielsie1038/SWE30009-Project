@@ -43,9 +43,9 @@ def money_to_decimal(text):
 
 #Steps (c)-(e): load page, enter data, click Calculate, compare result.
 def run_test_case(driver, wait, test):
-    driver.get(APP_URL)                                               # (c)
+    driver.get(APP_URL) # (c)
 
-    for field in MODEL_FIELDS:                                        # (d)
+    for field in MODEL_FIELDS: # (d)
         value = (test.get(field) or "").strip()
         if value:
             box = driver.find_element(By.ID, f"usage_{field}")
@@ -80,7 +80,6 @@ def run_test_case(driver, wait, test):
     driver.execute_script("arguments[0].scrollIntoView({block:'center'});", target)
     return passed, expected, actual
 
-
 def main():
     test_cases = read_test_cases()
     SHOT_DIR.mkdir(exist_ok=True)
@@ -90,7 +89,7 @@ def main():
 
     print(f"Running {len(test_cases)} test cases against {APP_URL}\n" + "-" * 70)
     try:
-        for test in test_cases:                                         # (g) repeat
+        for test in test_cases: # (g) repeat
             start = time.perf_counter()
             try:
                 passed, expected, actual = run_test_case(driver, wait, test)
@@ -101,7 +100,7 @@ def main():
 
             shot = SHOT_DIR / f"{test['test_id']}_{status}.png"
             try:
-                driver.save_screenshot(str(shot))                     # evidence of final bill
+                driver.save_screenshot(str(shot)) # evidence of final bill
             except WebDriverException:
                 pass
 
@@ -119,7 +118,6 @@ def main():
     print("-" * 70 + f"\nSummary: {passed_n}/{len(results)} passed, "
           f"{len(results) - passed_n} failed/errored")
     sys.exit(0 if passed_n == len(results) else 1)   # non-zero exit lets CI detect failures
-
 
 if __name__ == "__main__":
     main()

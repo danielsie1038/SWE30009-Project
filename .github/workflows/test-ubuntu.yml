@@ -1,54 +1,50 @@
-# Runs the Selenium test suite for the AI Gateway Dashboard on Ubuntu.
 name: Test (Ubuntu)
 
-# Manual trigger only: start it from the repository's "Actions" tab.
+# allow the test to be triggered manually from the repository's "Actions" tab
 on:
   workflow_dispatch:
 
 jobs:
   selenium-tests:
-    runs-on: ubuntu-latest     # GitHub-hosted Ubuntu runner
-    timeout-minutes: 30        # cancel stalled jobs automatically
+    runs-on: ubuntu-latest # GitHub-hosted Ubuntu runner
+    timeout-minutes: 30 # cancel stalled jobs automatically
 
-    # Read by test_script.py, so the same script works locally and in CI.
+    # Read by test_script.py, so the same script works locally and in CI
     env:
       APP_URL: http://localhost:8000/index.php
-      HEADLESS: "1"            # no display on a CI runner, so Chrome runs headless
+      HEADLESS: "1" # no display on a CI runner, so Chrome runs headless
 
     steps:
-      # (a) Get the repository code onto the runner.
+      # (a) Get the repository code onto the runner
       - name: Check out repository
         uses: actions/checkout@v7
 
-      # (b) Install Python. 'cache: pip' reuses downloaded packages between runs.
+      # (b) Install Python. 'cache: pip' reuses downloaded packages between runs
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
 
-      # (c) Install the test dependencies (Selenium) from requirements.txt.
+      # (c) Install the test dependencies from requirements.txt
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # PHP is needed to serve index.php.
+      # PHP to serve index.php
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
 
-      # (d) Chrome is preinstalled on GitHub-hosted runners. Print the versions
-      # to the log as proof. Selenium Manager (bundled with Selenium 4)
-      # downloads a matching ChromeDriver automatically when the test starts.
+      # (d) Print the versions for Chrome to the log to check if it is available. Selenium Manager downloads a matching ChromeDriver automatically when the test starts
       - name: Check browser and WebDriver
         run: |
           google-chrome --version
           chromedriver --version || echo "No system chromedriver; Selenium Manager will fetch one."
 
-      # (e) Start PHP's built-in web server in the background, then poll until
-      # the page responds, so the tests never start before the server is ready.
+      # (e) Start PHP's built-in web server in the background, then poll until the page responds, so the tests never start before the server is ready
       - name: Launch web server
         run: |
           nohup php -S localhost:8000 > php-server.log 2>&1 &
@@ -58,18 +54,16 @@ jobs:
           done
           echo "Server failed to start"; cat php-server.log; exit 1
 
-      # (f) Run the tests. test_script.py exits non-zero if any test fails,
-      # which makes this step (and the workflow) fail.
+      # (f) Run the tests. test_script.py exits non-zero if any test fails which makes this step (and the workflow) fail
       - name: Run Selenium tests
         run: python test_script.py
 
-      # Task 3: build an HTML report from results.json. 'if: always()' makes it
-      # run even when tests fail, which is when the report is most needed.
+      # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail, which is when the report is most needed
       - name: Generate HTML test report
         if: always()
         run: python generate_report.py
 
-      # Keep screenshots and results even when tests fail (needed later for reporting).
+      # Keep screenshots and results even when tests fail
       - name: Upload test evidence
         if: always()
         uses: actions/upload-artifact@v7

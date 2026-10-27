@@ -1,66 +1,58 @@
-# Runs the same Selenium test suite as test-ubuntu.yml, but on Windows.
-# Differences from the Ubuntu workflow are marked "WINDOWS:".
+# Runs the same Selenium test suite as test-ubuntu.yml, but on Windows
 name: Test (Windows)
 
-# Manual trigger only: start it from the repository's "Actions" tab.
+# allow the test to be triggered manually from the repository's "Actions" tab
 on:
   workflow_dispatch:
 
 jobs:
   selenium-tests:
-    runs-on: windows-latest    # GitHub-hosted Windows runner
-    timeout-minutes: 30        # cancel stalled jobs automatically
+    runs-on: windows-latest # GitHub-hosted Windows runner
+    timeout-minutes: 30 # cancel stalled jobs automatically
 
-    # WINDOWS: 'run' steps use PowerShell by default, so every script below is
-    # PowerShell, not bash. Set explicitly to avoid depending on the default.
+    # WINDOWS: 'run' steps use PowerShell by default but set explicitly to avoid depending on the default
     defaults:
       run:
         shell: pwsh
 
     env:
-      # WINDOWS: 127.0.0.1 instead of 'localhost'. On Windows, 'localhost' can
-      # resolve to the IPv6 address ::1 while PHP listens on IPv4 only.
+      # WINDOWS: 127.0.0.1 instead of 'localhost'. On Windows, 'localhost' can resolve to the IPv6 address1 but PHP listens on IPv4 only
       APP_URL: http://127.0.0.1:8000/index.php
-      HEADLESS: "1"            # no display on a CI runner, so Chrome runs headless
-      PYTHONUTF8: "1"          # WINDOWS: force UTF-8 so console output cannot hit cp1252 errors
+      HEADLESS: "1" # no display on a CI runner, so Chrome runs headless
+      PYTHONUTF8: "1"
 
     steps:
-      # (a) Get the repository code onto the runner.
+      # (a) Get the repository code onto the runner
       - name: Check out repository
         uses: actions/checkout@v7
 
-      # (b) Install Python. 'cache: pip' reuses downloaded packages between runs.
+      # (b) Install Python. 'cache: pip' reuses downloaded packages between runs
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
 
-      # (c) Install the test dependencies (Selenium) from requirements.txt.
+      # (c) Install the test dependencies from requirements.txt
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # PHP is needed to serve index.php (installs php.exe and adds it to PATH).
+      # PHP to serve index.php
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
 
-      # (d) Chrome is preinstalled on windows-latest. WINDOWS: 'google-chrome
-      # --version' does not exist here, so read the version from chrome.exe.
-      # Selenium Manager downloads a matching ChromeDriver when the test starts.
+      # (d) Print the versions for Chrome to the log to check if it is available. Selenium Manager downloads a matching ChromeDriver automatically when the test starts
       - name: Check browser and WebDriver
         run: |
           $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
           if (Test-Path $chrome) { (Get-Item $chrome).VersionInfo.ProductVersion } else { Write-Host "Chrome not found at default path" }
           if ($env:CHROMEWEBDRIVER) { Write-Host "Preinstalled ChromeDriver: $env:CHROMEWEBDRIVER" }
 
-      # (e) + (f) WINDOWS: the server is started AND the tests are run in the
-      # SAME step. A background process started in one step was not reachable
-      # from the next step on the Windows runner (ERR_CONNECTION_REFUSED), so
-      # the server's lifetime is tied to this step instead.
+      # (e) + (f) The server is started AND the tests are run in the same step. A background process started in one step was not reachable from the next step on the Windows runner (ERR_CONNECTION_REFUSED), so the server's lifetime is tied to this step instead.
       - name: Launch web server and run Selenium tests
         run: |
           # Start PHP's built-in server in the background. Output goes to two
@@ -94,8 +86,8 @@ jobs:
           Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
           exit $code
 
-      # Task 3: build an HTML report from results.json. 'if: always()' makes it
-      # run even when tests fail, which is when the report is most needed.
+      # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail, which is when the report is most needed
+      - name: Generate HTML test report
       - name: Generate HTML test report
         if: always()
         run: python generate_report.py
