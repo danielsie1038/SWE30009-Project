@@ -1,0 +1,96 @@
+# Runs the same Selenium test suite as test-ubuntu.yml, but on Windows.
+# Differences from the Ubuntu workflow are marked "WINDOWS:".
+name: Test (Windows)
+
+# Manual trigger only: start it from the repository's "Actions" tab.
+on:
+  workflow_dispatch:
+
+jobs:
+  selenium-tests:
+    runs-on: windows-latest    # GitHub-hosted Windows runner
+    timeout-minutes: 30        # cancel stalled jobs automatically
+
+    # WINDOWS: 'run' steps use PowerShell by default, so every script below is
+    # PowerShell, not bash. Set explicitly to avoid depending on the default.
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      # WINDOWS: 127.0.0.1 instead of 'localhost'. On Windows, 'localhost' can
+      # resolve to the IPv6 address ::1 while PHP listens on IPv4 only.
+      APP_URL: http://127.0.0.1:8000/index.php
+      HEADLESS: "1"            # no display on a CI runner, so Chrome runs headless
+      PYTHONUTF8: "1"          # WINDOWS: force UTF-8 so console output cannot hit cp1252 errors
+
+    steps:
+      # (a) Get the repository code onto the runner.
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      # (b) Install Python. 'cache: pip' reuses downloaded packages between runs.
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # (c) Install the test dependencies (Selenium) from requirements.txt.
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # PHP is needed to serve index.php (installs php.exe and adds it to PATH).
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+
+      # (d) Chrome is preinstalled on windows-latest. WINDOWS: 'google-chrome
+      # --version' does not exist here, so read the version from chrome.exe.
+      # Selenium Manager downloads a matching ChromeDriver when the test starts.
+      - name: Check browser and WebDriver
+        run: |
+          $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+          if (Test-Path $chrome) { (Get-Item $chrome).VersionInfo.ProductVersion } else { Write-Host "Chrome not found at default path" }
+          if ($env:CHROMEWEBDRIVER) { Write-Host "Preinstalled ChromeDriver: $env:CHROMEWEBDRIVER" }
+
+      # (e) WINDOWS: no 'nohup ... &'. Start-Process launches PHP's built-in
+      # server in the background (output redirected to two files, because
+      # PowerShell cannot send stdout and stderr to the same file here).
+      # Then poll until the page responds so tests never start too early.
+      - name: Launch web server
+        run: |
+          Start-Process -FilePath php -ArgumentList "-S","127.0.0.1:8000" `
+            -RedirectStandardOutput php-server.log -RedirectStandardError php-server-err.log `
+            -WindowStyle Hidden
+          for ($i = 0; $i -lt 30; $i++) {
+            try {
+              $r = Invoke-WebRequest -Uri $env:APP_URL -UseBasicParsing -TimeoutSec 2
+              if ($r.StatusCode -eq 200) { Write-Host "Server is up"; exit 0 }
+            } catch { }
+            Start-Sleep -Seconds 1
+          }
+          Write-Host "Server failed to start"
+          Get-Content php-server.log, php-server-err.log -ErrorAction SilentlyContinue
+          exit 1
+
+      # (f) Run the tests. test_script.py exits non-zero if any test fails,
+      # which makes this step (and the workflow) fail.
+      - name: Run Selenium tests
+        run: python test_script.py
+
+      # Keep screenshots and results even when tests fail.
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-windows
+          path: |
+            screenshots/
+            results.json
+            php-server.log
+            php-server-err.log
+          if-no-files-found: warn
