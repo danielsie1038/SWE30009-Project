@@ -57,30 +57,42 @@ jobs:
           if (Test-Path $chrome) { (Get-Item $chrome).VersionInfo.ProductVersion } else { Write-Host "Chrome not found at default path" }
           if ($env:CHROMEWEBDRIVER) { Write-Host "Preinstalled ChromeDriver: $env:CHROMEWEBDRIVER" }
 
-      # (e) WINDOWS: no 'nohup ... &'. Start-Process launches PHP's built-in
-      # server in the background (output redirected to two files, because
-      # PowerShell cannot send stdout and stderr to the same file here).
-      # Then poll until the page responds so tests never start too early.
-      - name: Launch web server
+      # (e) + (f) WINDOWS: the server is started AND the tests are run in the
+      # SAME step. A background process started in one step was not reachable
+      # from the next step on the Windows runner (ERR_CONNECTION_REFUSED), so
+      # the server's lifetime is tied to this step instead.
+      - name: Launch web server and run Selenium tests
         run: |
-          Start-Process -FilePath php -ArgumentList "-S","127.0.0.1:8000" `
+          # Start PHP's built-in server in the background. Output goes to two
+          # files because PowerShell cannot send stdout and stderr to one file.
+          $server = Start-Process -FilePath php -ArgumentList "-S","127.0.0.1:8000" `
             -RedirectStandardOutput php-server.log -RedirectStandardError php-server-err.log `
-            -WindowStyle Hidden
+            -WindowStyle Hidden -PassThru
+
+          # Poll until the page responds so the tests never start too early.
+          $ready = $false
           for ($i = 0; $i -lt 30; $i++) {
+            if ($server.HasExited) { break }
             try {
               $r = Invoke-WebRequest -Uri $env:APP_URL -UseBasicParsing -TimeoutSec 2
-              if ($r.StatusCode -eq 200) { Write-Host "Server is up"; exit 0 }
+              if ($r.StatusCode -eq 200) { $ready = $true; break }
             } catch { }
             Start-Sleep -Seconds 1
           }
-          Write-Host "Server failed to start"
-          Get-Content php-server.log, php-server-err.log -ErrorAction SilentlyContinue
-          exit 1
+          if (-not $ready) {
+            Write-Host "Server failed to start"
+            Get-Content php-server.log, php-server-err.log -ErrorAction SilentlyContinue
+            exit 1
+          }
+          Write-Host "Server is up (PID $($server.Id))"
 
-      # (f) Run the tests. test_script.py exits non-zero if any test fails,
-      # which makes this step (and the workflow) fail.
-      - name: Run Selenium tests
-        run: python test_script.py
+          # Run the tests. test_script.py exits non-zero if any test fails.
+          python test_script.py
+          $code = $LASTEXITCODE
+
+          # Stop the server, then pass the test result to the workflow.
+          Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+          exit $code
 
       # Keep screenshots and results even when tests fail.
       - name: Upload test evidence
