@@ -2,8 +2,8 @@
 
 PHP web app for estimating LLM usage costs, tested with Selenium.
 
-![Test (Ubuntu)](https://github.com/<YOUR-USERNAME>/<YOUR-REPO>/actions/workflows/test-ubuntu.yml/badge.svg)
-![Test (Windows)](https://github.com/<YOUR-USERNAME>/<YOUR-REPO>/actions/workflows/test-windows.yml/badge.svg)
+![Test (Ubuntu)](https://github.com/danielsie1038/SWE30009-Project/actions/workflows/test-ubuntu.yml/badge.svg)
+![Test (Windows)](https://github.com/danielsie1038/SWE30009-Project/actions/workflows/test-windows.yml/badge.svg)
 
 ## Run locally
 ```
