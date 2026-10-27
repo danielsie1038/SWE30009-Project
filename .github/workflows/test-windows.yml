@@ -88,7 +88,6 @@ jobs:
 
       # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail, which is when the report is most needed
       - name: Generate HTML test report
-      - name: Generate HTML test report
         if: always()
         run: python generate_report.py
 
