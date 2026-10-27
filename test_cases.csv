@@ -1,0 +1,11 @@
+test_id,description,gpt5,gpt5mini,sonnet,haiku,geminipro,geminiflash,llama,mistral,batch,expected_total,expected_error
+Test 01,Single model with standard pricing,10,,,,,,,,no,53.00,
+Test 02,Single model with Batch API discount,10,,,,,,,,yes,26.50,
+Test 03,All 8 models with 1M tokens each (standard),1,1,1,1,1,1,1,1,no,16.01,
+Test 04,All 8 models with 1M tokens each (batch),1,1,1,1,1,1,1,1,yes,8.00,
+Test 05,Fractional usage values (standard),,,,,,2.5,0.5,,no,1.22,
+Test 06,No usage entered on any model,,,,,,,,,no,0.00,
+Test 07,Two models with larger usage,,,100,200,,,,,no,530.00,
+Test 08,Large usage with batch discount and thousands separator,,,,,,,,1000,yes,1060.00,
+Test 09,Negative usage is rejected,,,,-5,,,,,no,,non-negative
+Test 10,Non-numeric usage is rejected,,abc,,,,,,,no,,valid number
