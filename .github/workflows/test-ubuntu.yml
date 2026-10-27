@@ -63,6 +63,12 @@ jobs:
       - name: Run Selenium tests
         run: python test_script.py
 
+      # Task 3: build an HTML report from results.json. 'if: always()' makes it
+      # run even when tests fail, which is when the report is most needed.
+      - name: Generate HTML test report
+        if: always()
+        run: python generate_report.py
+
       # Keep screenshots and results even when tests fail (needed later for reporting).
       - name: Upload test evidence
         if: always()
@@ -72,5 +78,6 @@ jobs:
           path: |
             screenshots/
             results.json
+            report.html
             php-server.log
           if-no-files-found: warn

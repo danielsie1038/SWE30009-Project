@@ -94,6 +94,12 @@ jobs:
           Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
           exit $code
 
+      # Task 3: build an HTML report from results.json. 'if: always()' makes it
+      # run even when tests fail, which is when the report is most needed.
+      - name: Generate HTML test report
+        if: always()
+        run: python generate_report.py
+
       # Keep screenshots and results even when tests fail.
       - name: Upload test evidence
         if: always()
@@ -103,6 +109,7 @@ jobs:
           path: |
             screenshots/
             results.json
+            report.html
             php-server.log
             php-server-err.log
           if-no-files-found: warn

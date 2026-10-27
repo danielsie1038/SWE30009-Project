@@ -1,4 +1,5 @@
 screenshots/
 results.json
+report.html
 php-server*.log
 __pycache__/
