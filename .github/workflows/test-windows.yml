@@ -45,14 +45,17 @@ jobs:
         with:
           php-version: "8.2"
 
-      # (d) Print the versions for Chrome to the log to check if it is available. Selenium Manager downloads a matching ChromeDriver automatically when the test starts
+      # (d) Print the versions for Chrome to the log to check if it is available.
+      #Selenium Manager downloads a matching ChromeDriver automatically when the test starts
       - name: Check browser and WebDriver
         run: |
           $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
           if (Test-Path $chrome) { (Get-Item $chrome).VersionInfo.ProductVersion } else { Write-Host "Chrome not found at default path" }
           if ($env:CHROMEWEBDRIVER) { Write-Host "Preinstalled ChromeDriver: $env:CHROMEWEBDRIVER" }
 
-      # (e) + (f) The server is started AND the tests are run in the same step. A background process started in one step was not reachable from the next step on the Windows runner (ERR_CONNECTION_REFUSED), so the server's lifetime is tied to this step instead.
+      # (e) + (f) The server is started AND the tests are run in the same step.
+      # A background process started in one step was not reachable from the next step on the Windows runner (ERR_CONNECTION_REFUSED),
+      # so the server's lifetime is tied to this step instead.
       - name: Launch web server and run Selenium tests
         run: |
           # Start PHP's built-in server in the background. Output goes to two
@@ -86,7 +89,8 @@ jobs:
           Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
           exit $code
 
-      # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail, which is when the report is most needed
+      # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail,
+      #which is when the report is most needed
       - name: Generate HTML test report
         if: always()
         run: python generate_report.py

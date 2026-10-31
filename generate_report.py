@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
+# Keep input and output files beside this script so local runs and CI use the
+# same paths regardless of the current working directory.
 BASE_DIR = Path(__file__).resolve().parent
 RESULTS_FILE = BASE_DIR / "results.json"
 REPORT_FILE = BASE_DIR / "report.html"
@@ -33,18 +35,20 @@ th{color:#5d6b73;font-size:.82rem}
 a{color:#0f6b62}
 """
 
+#Load test results from JSON, returning an empty list when none exist.
 def load_results():
     if not RESULTS_FILE.exists():
         return []
     return json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
 
+#Format the result details shown for a failed or errored test.
 def failure_reason(r):
     if r["status"] == "ERROR":
         return f"The test could not finish: {r['actual']}"
     return f"Expected {r['expected']} but the page showed: {r['actual']}"
 
+# Horizontal SVG bar chart of execution time, coloured by status.
 def time_chart(results):
-    """Horizontal SVG bar chart of execution time, coloured by status."""
     longest = max(r["duration_s"] for r in results) or 1
     row_h, left, width = 28, 70, 560
     svg = [f'<svg viewBox="0 0 {left + width + 80} {row_h * len(results) + 8}" '
@@ -61,6 +65,7 @@ def time_chart(results):
     svg.append("</svg>")
     return "".join(svg)
 
+# Build the complete HTML report for the supplied test results.
 def build_html(results):
     total = len(results)
     passed = sum(r["status"] == "PASS" for r in results)
@@ -75,10 +80,12 @@ def build_html(results):
     run_id = os.getenv("GITHUB_RUN_ID")
     run_info = f" | GitHub run #{escape(run_id)}" if run_id else " | local run"
 
+    # Each segment is proportional to the number of results in that status.
     segments = "".join(
         f'<div style="width:{100 * n / total:.1f}%;background:{COLORS[s]}" title="{s}: {n}"></div>'
         for s, n in (("PASS", passed), ("FAIL", failed), ("ERROR", errors)) if n and total)
 
+    # Keep failures separate from the full table so they are easy to scan.
     bad = [r for r in results if r["status"] != "PASS"]
     if bad:
         failures = "".join(
@@ -87,6 +94,7 @@ def build_html(results):
     else:
         failures = '<div class="ok">All test cases passed. No failures to report.</div>'
 
+    # Escape user- or test-generated values before inserting them into HTML.
     rows = "".join(
         f'<tr><td>{escape(r["test_id"])}</td><td>{escape(r["description"])}</td>'
         f'<td><span class="badge" style="background:{COLORS.get(r["status"], "#666")}">{r["status"]}</span></td>'
@@ -117,8 +125,8 @@ def build_html(results):
             f'<p>Runner: {escape(runner)} | Python {platform.python_version()} | {when}{run_info}</p></header>'
             f'<main>{body}</main></body></html>')
 
+# Shows a short table on the GitHub run page
 def write_job_summary(results):
-    """Shows a short table on the GitHub run page (no download needed)."""
     path = os.getenv("GITHUB_STEP_SUMMARY")
     if not path:
         return
@@ -130,6 +138,7 @@ def write_job_summary(results):
         f.write("\n".join(lines) + "\n")
 
 if __name__ == "__main__":
+    # Generate both outputs from the same snapshot of the results file.
     data = load_results()
     REPORT_FILE.write_text(build_html(data), encoding="utf-8")
     write_job_summary(data)

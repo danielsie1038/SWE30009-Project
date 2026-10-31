@@ -38,13 +38,15 @@ jobs:
         with:
           php-version: "8.2"
 
-      # (d) Print the versions for Chrome to the log to check if it is available. Selenium Manager downloads a matching ChromeDriver automatically when the test starts
+      # (d) Print the versions for Chrome to the log to check if it is available.
+      #Selenium Manager downloads a matching ChromeDriver automatically when the test starts
       - name: Check browser and WebDriver
         run: |
           google-chrome --version
           chromedriver --version || echo "No system chromedriver; Selenium Manager will fetch one."
 
-      # (e) Start PHP's built-in web server in the background, then poll until the page responds, so the tests never start before the server is ready
+      # (e) Start PHP's built-in web server in the background, then poll until the page responds, 
+      # so the tests never start before the server is ready
       - name: Launch web server
         run: |
           nohup php -S localhost:8000 > php-server.log 2>&1 &
@@ -58,7 +60,8 @@ jobs:
       - name: Run Selenium tests
         run: python test_script.py
 
-      # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail, which is when the report is most needed
+      # Task 3: build an HTML report from results.json. 'if: always()' makes it run even when tests fail,
+      # which is when the report is most needed
       - name: Generate HTML test report
         if: always()
         run: python generate_report.py
